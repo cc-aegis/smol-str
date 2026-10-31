@@ -1,0 +1,74 @@
+use std::mem::ManuallyDrop;
+
+union SmolStrData {
+    ptr: ManuallyDrop<Box<str>>, // TODO: into ManuallyDrop<String>
+    inlined: [u8; 8],
+}
+
+struct SmolStr {
+    data: SmolStrData,
+    len_bytes: usize,
+}
+
+impl SmolStr {
+    fn new() -> Self {
+        Self::from("")
+    }
+
+    fn from(s: &str) -> Self {
+        let len_bytes = s.as_bytes().len();
+        let data = match len_bytes {
+            ..=8 => {
+                let mut inlined = [0; 8];
+                inlined[..len_bytes].copy_from_slice(s.as_bytes());
+                SmolStrData { inlined }
+            },
+            _ => SmolStrData {
+                ptr: ManuallyDrop::new(s.into())
+            },
+        };
+        SmolStr { data, len_bytes }
+    }
+
+    fn is_inlined(&self) -> bool {
+        self.len_bytes <= 8
+    }
+
+    fn as_str(&self) -> &str {
+        if self.is_inlined() {
+            unsafe { std::str::from_utf8_unchecked(&self.data.inlined[..self.len_bytes]) }
+        } else {
+            unsafe { self.data.ptr.as_ref() }
+        }
+    }
+}
+
+impl Drop for SmolStr {
+    fn drop(&mut self) {
+        if !self.is_inlined() {
+            unsafe {
+                ManuallyDrop::drop(&mut self.data.ptr);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        assert_eq!(SmolStr::new().as_str(), "");
+    }
+
+    #[test]
+    fn hii_ho() {
+        assert_eq!(SmolStr::from("Hii Ho!").as_str(), "Hii Ho!");
+    }
+
+    #[test]
+    fn hello_world() {
+        assert_eq!(SmolStr::from("Hello World!").as_str(), "Hello World!");
+    }
+}
