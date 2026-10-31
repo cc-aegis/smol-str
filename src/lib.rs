@@ -1,8 +1,11 @@
 use std::mem::ManuallyDrop;
 
+type SmolStrDataPtrInner = Box<str>; // TODO: into ManuallyDrop<String>
+const SMOL_STR_DATA_PTR_SIZE: usize = size_of::<SmolStrDataPtrInner>();
+
 union SmolStrData {
-    ptr: ManuallyDrop<Box<str>>, // TODO: into ManuallyDrop<String>
-    inlined: [u8; 8],
+    ptr: ManuallyDrop<SmolStrDataPtrInner>,
+    inlined: [u8; SMOL_STR_DATA_PTR_SIZE],
 }
 
 struct SmolStr {
@@ -16,7 +19,7 @@ impl SmolStr {
     }
 
     fn is_inlined(&self) -> bool {
-        self.len_bytes <= 8
+        self.len_bytes <= SMOL_STR_DATA_PTR_SIZE
     }
 
     fn as_str(&self) -> &str {
@@ -32,8 +35,8 @@ impl From<&str> for SmolStr {
     fn from(s: &str) -> Self {
         let len_bytes = s.as_bytes().len();
         let data = match len_bytes {
-            ..=8 => {
-                let mut inlined = [0; 8];
+            ..=SMOL_STR_DATA_PTR_SIZE => {
+                let mut inlined = [0; SMOL_STR_DATA_PTR_SIZE];
                 inlined[..len_bytes].copy_from_slice(s.as_bytes());
                 SmolStrData { inlined }
             },
