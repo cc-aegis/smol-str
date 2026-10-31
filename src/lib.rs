@@ -15,6 +15,20 @@ impl SmolStr {
         Self::from("")
     }
 
+    fn is_inlined(&self) -> bool {
+        self.len_bytes <= 8
+    }
+
+    fn as_str(&self) -> &str {
+        if self.is_inlined() {
+            unsafe { std::str::from_utf8_unchecked(&self.data.inlined[..self.len_bytes]) }
+        } else {
+            unsafe { self.data.ptr.as_ref() }
+        }
+    }
+}
+
+impl From<&str> for SmolStr {
     fn from(s: &str) -> Self {
         let len_bytes = s.as_bytes().len();
         let data = match len_bytes {
@@ -28,18 +42,6 @@ impl SmolStr {
             },
         };
         SmolStr { data, len_bytes }
-    }
-
-    fn is_inlined(&self) -> bool {
-        self.len_bytes <= 8
-    }
-
-    fn as_str(&self) -> &str {
-        if self.is_inlined() {
-            unsafe { std::str::from_utf8_unchecked(&self.data.inlined[..self.len_bytes]) }
-        } else {
-            unsafe { self.data.ptr.as_ref() }
-        }
     }
 }
 
