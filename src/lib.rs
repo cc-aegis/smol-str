@@ -76,4 +76,9 @@ mod tests {
     fn hello_world() {
         assert_eq!(SmolStr::from("Hello World!").as_str(), "Hello World!");
     }
+
+    #[test]
+    fn lorem_ipsum() {
+        assert_eq!(SmolStr::from("lorem ipsum dolor sit amet").as_str(), "lorem ipsum dolor sit amet");
+    }
 }
